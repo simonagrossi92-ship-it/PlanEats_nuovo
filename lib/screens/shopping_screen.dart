@@ -5,7 +5,6 @@ import '../models.dart';
 import '../utils/dates.dart';
 import '../utils/category_helper.dart';
 import '../utils/price_helper.dart';
-import 'archive_screen.dart';
 
 class ShoppingScreen extends StatefulWidget {
   const ShoppingScreen({super.key, required this.state});
@@ -41,18 +40,6 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
         title: Text(
             'Spesa • ${weekdayShortLabel(start)}-${weekdayShortLabel(end)}'),
         actions: [
-          IconButton(
-            tooltip: 'Archivio',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ArchiveScreen(state: widget.state),
-                ),
-              );
-            },
-            icon: const Icon(Icons.archive),
-          ),
           IconButton(
             tooltip: 'Archivia spuntati',
             onPressed: () async {
@@ -106,11 +93,129 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   false;
 
               if (confirmed) {
+                // Prima ottieni gli ingredienti spuntati
+                final checkedIngredients = <Ingredient>[];
+                for (final day in days) {
+                  final weekKey = isoDate(weekStartMonday(day));
+                  final checks =
+                      widget.state.data.shoppingChecks[weekKey] ?? {};
+
+                  // Ottieni ingredienti dalla lista generata
+                  final generatedList =
+                      widget.state.data.generatedShoppingList[weekKey] ?? [];
+                  for (final ingredient in generatedList) {
+                    final key = ingredient.name;
+                    if (checks[key] == true) {
+                      checkedIngredients.add(ingredient);
+                    }
+                  }
+
+                  // Ottieni ingredienti extra
+                  final extraList =
+                      widget.state.data.extraShoppingItems[weekKey] ?? [];
+                  for (final ingredient in extraList) {
+                    final key = ingredient.name;
+                    if (checks[key] == true) {
+                      checkedIngredients.add(ingredient);
+                    }
+                  }
+                }
+
+                // Mostra dialog per inserire importo scontrino
+                final receiptAmount = await showDialog<double>(
+                  context: context,
+                  builder: (context) {
+                    final controller = TextEditingController();
+                    return AlertDialog(
+                      title: const Text('Importo Scontrino'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Inserisci l\'importo totale dello scontrino',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: controller,
+                            decoration: const InputDecoration(
+                              labelText: 'Importo (€)',
+                              prefixText: '€ ',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            autofocus: true,
+                            onFieldSubmitted: (value) {
+                              Navigator.pop(
+                                  context, double.tryParse(value) ?? 0.0);
+                            },
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, null),
+                          child: const Text('Annulla'),
+                        ),
+                        FilledButton(
+                          onPressed: () {
+                            final value =
+                                double.tryParse(controller.text) ?? 0.0;
+                            Navigator.pop(context, value);
+                          },
+                          child: const Text('Conferma'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (receiptAmount == null || receiptAmount <= 0) {
+                  // Se l'utente annulla o inserisce un valore non valido,
+                  // procedi con l'archiviazione normale
+                  await widget.state.archiveCheckedItems(now);
+                  if (checkedIngredients.isNotEmpty) {
+                    await widget.state
+                        .convertArchivedShoppingToExpenses(checkedIngredients);
+                  }
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Prodotti archiviati'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                // Calcola la distribuzione per reparto
+                final categoryCounts = <IngredientCategory, int>{};
+                for (final ingredient in checkedIngredients) {
+                  categoryCounts[ingredient.category] =
+                      (categoryCounts[ingredient.category] ?? 0) + 1;
+                }
+
+                final totalCount = checkedIngredients.length;
+                final categoryAmounts = <IngredientCategory, double>{};
+
+                for (final entry in categoryCounts.entries) {
+                  final percentage = entry.value / totalCount;
+                  categoryAmounts[entry.key] = receiptAmount * percentage;
+                }
+
+                // Archivia gli elementi spuntati
                 await widget.state.archiveCheckedItems(now);
+
+                // Converti gli importi calcolati in spese
+                await widget.state
+                    .convertCategoryAmountsToExpenses(categoryAmounts);
+
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Prodotti archiviati con successo!'),
+                      content: Text('Scontrino registrato e spese aggiornate!'),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -863,6 +968,12 @@ class _CategorySection extends StatelessWidget {
         return Colors.amber.shade100;
       case IngredientCategory.bevande:
         return Colors.purple.shade100;
+      case IngredientCategory.prodottiAnimali:
+        return Colors.teal.shade100;
+      case IngredientCategory.curaCasa:
+        return Colors.lime.shade100;
+      case IngredientCategory.igienePersonale:
+        return Colors.pink.shade100;
       case IngredientCategory.altro:
         return Colors.grey.shade200;
     }

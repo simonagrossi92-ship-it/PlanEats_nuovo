@@ -10,7 +10,8 @@ String isoDate(DateTime d) {
 DateTime parseIsoDate(String s) {
   final parts = s.split('-');
   if (parts.length != 3) return DateTime.now();
-  return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+  return DateTime(
+      int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
 }
 
 /// Ritorna il lunedì della settimana della data `d`.
@@ -26,7 +27,6 @@ List<DateTime> weekDays(DateTime anyDayInWeek) {
 }
 
 String weekdayShortLabel(DateTime d) {
-  const labels = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+  const labels = ['Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa', 'Do'];
   return labels[(d.weekday + 6) % 7];
 }
-

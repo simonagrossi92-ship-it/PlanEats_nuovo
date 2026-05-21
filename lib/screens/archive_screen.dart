@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models.dart';
-import 'archive_report_screen.dart';
 
 class ArchiveScreen extends StatefulWidget {
   const ArchiveScreen({super.key, required this.state});
@@ -22,19 +21,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
         title: const Text('Archivio Prodotti'),
         actions: [
           if (archivedItems.isNotEmpty) ...[
-            IconButton(
-              tooltip: 'Report',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        ArchiveReportScreen(state: widget.state),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.bar_chart),
-            ),
             IconButton(
               tooltip: 'Svuota archivio',
               onPressed: () => _showClearAllDialog(context),
@@ -161,6 +147,12 @@ class _ArchivedItemTile extends StatelessWidget {
         return Colors.amber.shade100;
       case IngredientCategory.bevande:
         return Colors.purple.shade100;
+      case IngredientCategory.prodottiAnimali:
+        return Colors.teal.shade100;
+      case IngredientCategory.curaCasa:
+        return Colors.lime.shade100;
+      case IngredientCategory.igienePersonale:
+        return Colors.pink.shade100;
       case IngredientCategory.altro:
         return Colors.grey.shade200;
     }

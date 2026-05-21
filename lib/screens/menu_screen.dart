@@ -330,6 +330,12 @@ class _MenuScreenState extends State<MenuScreen>
         return Colors.amber;
       case IngredientCategory.bevande:
         return Colors.purple;
+      case IngredientCategory.prodottiAnimali:
+        return Colors.teal;
+      case IngredientCategory.curaCasa:
+        return Colors.lime;
+      case IngredientCategory.igienePersonale:
+        return Colors.pink;
       case IngredientCategory.altro:
         return Colors.grey;
     }
@@ -344,15 +350,7 @@ class _MenuScreenState extends State<MenuScreen>
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'PlanEats',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF8BA888), // Verde Salvia
-              ),
-            ),
-            SizedBox(height: 4), // Aggiunto spazio tra i due testi
+            SizedBox(height: 4), // Aggiunto spazio
             Text(
               'Menù settimanale',
               style: TextStyle(

@@ -383,6 +383,12 @@ class _ArchiveReportScreenState extends State<ArchiveReportScreen> {
         return Colors.amber;
       case IngredientCategory.bevande:
         return Colors.purple;
+      case IngredientCategory.prodottiAnimali:
+        return Colors.teal;
+      case IngredientCategory.curaCasa:
+        return Colors.lime;
+      case IngredientCategory.igienePersonale:
+        return Colors.pink;
       case IngredientCategory.altro:
         return Colors.grey;
     }
@@ -539,6 +545,12 @@ class _ReportItemTile extends StatelessWidget {
         return Colors.amber;
       case IngredientCategory.bevande:
         return Colors.purple;
+      case IngredientCategory.prodottiAnimali:
+        return Colors.teal;
+      case IngredientCategory.curaCasa:
+        return Colors.lime;
+      case IngredientCategory.igienePersonale:
+        return Colors.pink;
       case IngredientCategory.altro:
         return Colors.grey;
     }

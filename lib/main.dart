@@ -9,6 +9,7 @@ import 'screens/profile_screen.dart';
 import 'screens/recipes_screen.dart';
 import 'screens/shopping_screen.dart';
 import 'screens/report_screen.dart';
+import 'screens/archive_screen.dart';
 
 // #region debug-point snack-manual-redscreen:reporter
 Future<void> _dbgReport({
@@ -175,12 +176,148 @@ class _HomeShellState extends State<HomeShell> {
     final pages = <Widget>[
       MenuScreen(state: widget.state),
       ShoppingScreen(state: widget.state),
-      ReportScreen(state: widget.state),
       RecipesScreen(state: widget.state),
-      ProfileScreen(state: widget.state),
     ];
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('PlanEats'),
+        backgroundColor: const Color(0xFFFDF5E6),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                color: Color(0xFF8BA888),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: Implementare caricamento foto
+                        },
+                        child: Container(
+                          width: 70,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 3,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Color(0xFF8BA888),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'PlanEats',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'user@example.com',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.restaurant_menu_outlined),
+              title: const Text('Menu settimanale'),
+              selected: _index == 0,
+              onTap: () {
+                setState(() => _index = 0);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.shopping_cart_outlined),
+              title: const Text('Spesa'),
+              selected: _index == 1,
+              onTap: () {
+                setState(() => _index = 1);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book_outlined),
+              title: const Text('Ricettario'),
+              selected: _index == 2,
+              onTap: () {
+                setState(() => _index = 2);
+                Navigator.pop(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.inventory_2_outlined),
+              title: const Text('Report'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportScreen(state: widget.state),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.archive),
+              title: const Text('Archivio prodotti'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ArchiveScreen(state: widget.state),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Profilo'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileScreen(state: widget.state),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       body: pages[_index],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -210,19 +347,9 @@ class _HomeShellState extends State<HomeShell> {
               label: 'Spesa',
             ),
             NavigationDestination(
-              icon: Icon(Icons.inventory_2_outlined),
-              selectedIcon: Icon(Icons.inventory_2),
-              label: 'Report',
-            ),
-            NavigationDestination(
               icon: Icon(Icons.menu_book_outlined),
               selectedIcon: Icon(Icons.menu_book),
               label: 'Ricettario',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profilo',
             ),
           ],
         ),

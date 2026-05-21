@@ -422,6 +422,79 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Conversione spesa archiviata in spese ---
+  Future<void> convertArchivedShoppingToExpenses(
+      List<Ingredient> ingredients) async {
+    // Raggruppa gli ingredienti per categoria di spesa
+    final categoryTotals = <ExpenseCategory, double>{};
+
+    for (final ingredient in ingredients) {
+      final expenseCategory =
+          mapIngredientToExpenseCategory(ingredient.category);
+
+      // Calcola il prezzo dell'ingrediente cercando nei custom products
+      double price = 0.0;
+      final customProduct = _data.customProducts[ingredient.name];
+      if (customProduct != null) {
+        if (ingredient.quantity != null) {
+          price = ingredient.quantity! * customProduct.price;
+        } else {
+          price = customProduct.price;
+        }
+      }
+
+      // Se non c'è prezzo, usa un prezzo predefinito (es. 1.0)
+      if (price == 0.0) {
+        price = 1.0;
+      }
+
+      categoryTotals[expenseCategory] =
+          (categoryTotals[expenseCategory] ?? 0.0) + price;
+    }
+
+    // Crea ExpenseRecord per ogni categoria
+    final now = DateTime.now();
+    print('Creando ${categoryTotals.length} spese da ingredienti archiviati');
+    for (final entry in categoryTotals.entries) {
+      if (entry.value > 0) {
+        final expense = ExpenseRecord(
+          amount: entry.value,
+          dateTime: now,
+          note: 'Da lista spesa archiviata',
+          category: entry.key,
+        );
+        print('Aggiungendo spesa: ${entry.key} - €${entry.value}');
+        await addExpense(expense);
+      }
+    }
+    print('Spese totali dopo conversione: ${_data.expenseRecords.length}');
+  }
+
+  // --- Conversione importi per reparto in spese ---
+  Future<void> convertCategoryAmountsToExpenses(
+      Map<IngredientCategory, double> categoryAmounts) async {
+    final now = DateTime.now();
+    print(
+        'Creando spese da importi scontrino per ${categoryAmounts.length} reparti');
+
+    for (final entry in categoryAmounts.entries) {
+      if (entry.value > 0) {
+        final expenseCategory = mapIngredientToExpenseCategory(entry.key);
+        final expense = ExpenseRecord(
+          amount: entry.value,
+          dateTime: now,
+          note: 'Da scontrino - ${ingredientCategoryLabel(entry.key)}',
+          category: expenseCategory,
+        );
+        print(
+            'Aggiungendo spesa: ${expenseCategory} - €${entry.value} (da ${entry.key})');
+        await addExpense(expense);
+      }
+    }
+    print(
+        'Spese totali dopo conversione scontrino: ${_data.expenseRecords.length}');
+  }
+
   MonthlyBudget? getMonthlyBudget(int year, int month) {
     final key = '$year-${month.toString().padLeft(2, '0')}';
     return _data.monthlyBudgets[key];

@@ -192,8 +192,26 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   redThreshold: redThreshold,
                 );
 
-                widget.state.setMonthlyBudget(budget);
-                Navigator.pop(context);
+                widget.state.setMonthlyBudget(budget).then((_) {
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Budget salvato con successo!'),
+                        backgroundColor: Color(0xFF8BA888),
+                      ),
+                    );
+                  }
+                }).catchError((error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Errore durante il salvataggio: $error'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                });
               },
               child: const Text('Salva'),
             ),
@@ -239,6 +257,7 @@ class _CurrentBudgetCard extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: _getStatusColor(status).withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -261,19 +280,112 @@ class _CurrentBudgetCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             if (currentBudget != null) ...[
-              // Barra di progresso
-              LinearProgressIndicator(
-                value: percentage,
-                backgroundColor: Colors.grey[300],
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(_getStatusColor(status)),
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(4),
+              // Budget Ring - Grafico circolare
+              Center(
+                child: SizedBox(
+                  height: 150,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Cerchio di sfondo
+                      SizedBox(
+                        height: 150,
+                        width: 150,
+                        child: CircularProgressIndicator(
+                          value: 1.0,
+                          strokeWidth: 12,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.grey[300]!,
+                          ),
+                        ),
+                      ),
+                      // Cerchio di progresso
+                      SizedBox(
+                        height: 150,
+                        width: 150,
+                        child: CircularProgressIndicator(
+                          value: percentage.clamp(0.0, 1.0),
+                          strokeWidth: 12,
+                          backgroundColor: Colors.transparent,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _getStatusColor(status),
+                          ),
+                        ),
+                      ),
+                      // Testo centrale
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${(percentage * 100).toStringAsFixed(0)}%',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: _getStatusColor(status),
+                                ),
+                          ),
+                          Text(
+                            'utilizzato',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey[600],
+                                    ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Card di stato dinamico
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _getStatusIcon(status),
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getStatusText(status),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _getStatusDescription(status, percentage),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
-              // Dettagli
+              // Dettagli numerici
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -336,37 +448,6 @@ class _CurrentBudgetCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // Percentuale e stato
-              Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(status).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border:
-                          Border.all(color: _getStatusColor(status), width: 1),
-                    ),
-                    child: Text(
-                      _getStatusText(status),
-                      style: TextStyle(
-                        color: _getStatusColor(status),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${(percentage * 100).toStringAsFixed(1)}% utilizzato',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                  ),
-                ],
-              ),
             ] else ...[
               // Nessun budget impostato
               Container(
@@ -408,6 +489,17 @@ class _CurrentBudgetCard extends StatelessWidget {
     }
   }
 
+  IconData _getStatusIcon(BudgetStatus status) {
+    switch (status) {
+      case BudgetStatus.verde:
+        return Icons.check_circle;
+      case BudgetStatus.giallo:
+        return Icons.warning;
+      case BudgetStatus.rosso:
+        return Icons.error;
+    }
+  }
+
   String _getStatusText(BudgetStatus status) {
     switch (status) {
       case BudgetStatus.verde:
@@ -416,6 +508,17 @@ class _CurrentBudgetCard extends StatelessWidget {
         return 'ATTENZIONE';
       case BudgetStatus.rosso:
         return 'SUPERATO';
+    }
+  }
+
+  String _getStatusDescription(BudgetStatus status, double percentage) {
+    switch (status) {
+      case BudgetStatus.verde:
+        return 'Sei ampiamente dentro il budget';
+      case BudgetStatus.giallo:
+        return 'Ti stai avvicinando alla soglia limite';
+      case BudgetStatus.rosso:
+        return 'Hai superato il budget prefissato';
     }
   }
 

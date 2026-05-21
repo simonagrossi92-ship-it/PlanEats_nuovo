@@ -9,6 +9,20 @@ enum IngredientCategory {
   surgelati,
   dispensa,
   bevande,
+  prodottiAnimali,
+  curaCasa,
+  igienePersonale,
+  altro,
+}
+
+enum ExpenseCategory {
+  alimentari,
+  casa,
+  ristoranti,
+  trasporti,
+  salute,
+  intrattenimento,
+  abbigliamento,
   altro,
 }
 
@@ -30,8 +44,56 @@ String ingredientCategoryLabel(IngredientCategory c) {
       return 'Dispensa';
     case IngredientCategory.bevande:
       return 'Bevande';
+    case IngredientCategory.prodottiAnimali:
+      return 'Prodotti per animali';
+    case IngredientCategory.curaCasa:
+      return 'Cura della casa';
+    case IngredientCategory.igienePersonale:
+      return 'Igiene personale';
     case IngredientCategory.altro:
       return 'Altro';
+  }
+}
+
+String expenseCategoryLabel(ExpenseCategory c) {
+  switch (c) {
+    case ExpenseCategory.alimentari:
+      return 'Alimentari';
+    case ExpenseCategory.casa:
+      return 'Cura della casa';
+    case ExpenseCategory.ristoranti:
+      return 'Sgarri / Ristoranti';
+    case ExpenseCategory.trasporti:
+      return 'Trasporti';
+    case ExpenseCategory.salute:
+      return 'Salute';
+    case ExpenseCategory.intrattenimento:
+      return 'Intrattenimento';
+    case ExpenseCategory.abbigliamento:
+      return 'Abbigliamento';
+    case ExpenseCategory.altro:
+      return 'Altro';
+  }
+}
+
+String expenseCategoryEmoji(ExpenseCategory c) {
+  switch (c) {
+    case ExpenseCategory.alimentari:
+      return '🍏';
+    case ExpenseCategory.casa:
+      return '🧴';
+    case ExpenseCategory.ristoranti:
+      return '🍕';
+    case ExpenseCategory.trasporti:
+      return '🚗';
+    case ExpenseCategory.salute:
+      return '💊';
+    case ExpenseCategory.intrattenimento:
+      return '🎬';
+    case ExpenseCategory.abbigliamento:
+      return '👕';
+    case ExpenseCategory.altro:
+      return '📦';
   }
 }
 
@@ -41,6 +103,29 @@ IngredientCategory ingredientCategoryFromString(String? s) {
     (e) => e.name == s,
     orElse: () => IngredientCategory.altro,
   );
+}
+
+// Mappa IngredientCategory a ExpenseCategory per conversione spesa -> spese
+ExpenseCategory mapIngredientToExpenseCategory(
+    IngredientCategory ingredientCategory) {
+  switch (ingredientCategory) {
+    case IngredientCategory.ortofrutta:
+    case IngredientCategory.carne:
+    case IngredientCategory.pesce:
+    case IngredientCategory.latticini:
+    case IngredientCategory.panetteria:
+    case IngredientCategory.surgelati:
+    case IngredientCategory.dispensa:
+    case IngredientCategory.bevande:
+      return ExpenseCategory.alimentari;
+    case IngredientCategory.curaCasa:
+    case IngredientCategory.prodottiAnimali:
+      return ExpenseCategory.casa;
+    case IngredientCategory.igienePersonale:
+      return ExpenseCategory.salute;
+    case IngredientCategory.altro:
+      return ExpenseCategory.altro;
+  }
 }
 
 class Ingredient {
@@ -295,16 +380,19 @@ class ExpenseRecord {
     required this.amount,
     required this.dateTime,
     this.note,
+    this.category = ExpenseCategory.altro,
   });
 
   final double amount;
   final DateTime dateTime;
   final String? note;
+  final ExpenseCategory category;
 
   Map<String, dynamic> toJson() => {
         'amount': amount,
         'dateTime': dateTime.toIso8601String(),
         'note': note,
+        'category': category.name,
       };
 
   static ExpenseRecord fromJson(Map<String, dynamic> json) => ExpenseRecord(
@@ -312,6 +400,12 @@ class ExpenseRecord {
         dateTime: DateTime.parse(
             json['dateTime'] as String? ?? DateTime.now().toIso8601String()),
         note: json['note'] as String?,
+        category: json['category'] != null
+            ? ExpenseCategory.values.firstWhere(
+                (e) => e.name == json['category'],
+                orElse: () => ExpenseCategory.altro,
+              )
+            : ExpenseCategory.altro,
       );
 
   String get formattedDate {
