@@ -104,7 +104,9 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   final generatedList =
                       widget.state.data.generatedShoppingList[weekKey] ?? [];
                   for (final ingredient in generatedList) {
-                    final key = ingredient.name;
+                    final norm = ingredient.name.toLowerCase();
+                    final unit = (ingredient.unit ?? '').trim().toLowerCase();
+                    final key = '${ingredient.category.name}|$norm|$unit';
                     if (checks[key] == true) {
                       checkedIngredients.add(ingredient);
                     }
@@ -114,7 +116,9 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   final extraList =
                       widget.state.data.extraShoppingItems[weekKey] ?? [];
                   for (final ingredient in extraList) {
-                    final key = ingredient.name;
+                    final norm = ingredient.name.toLowerCase();
+                    final unit = (ingredient.unit ?? '').trim().toLowerCase();
+                    final key = '${ingredient.category.name}|$norm|$unit';
                     if (checks[key] == true) {
                       checkedIngredients.add(ingredient);
                     }
@@ -126,6 +130,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   context: context,
                   builder: (context) {
                     final controller = TextEditingController();
+
                     return AlertDialog(
                       title: const Text('Importo Scontrino'),
                       content: Column(
@@ -174,6 +179,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                 if (receiptAmount == null || receiptAmount <= 0) {
                   // Se l'utente annulla o inserisce un valore non valido,
                   // procedi con l'archiviazione normale
+                  print(
+                      'Importo scontrino non valido o annullato: $receiptAmount');
                   await widget.state.archiveCheckedItems(now);
                   if (checkedIngredients.isNotEmpty) {
                     await widget.state
@@ -190,6 +197,9 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   return;
                 }
 
+                print(
+                    'Importo scontrino valido: €${receiptAmount.toStringAsFixed(2)}');
+
                 // Calcola la distribuzione per reparto
                 final categoryCounts = <IngredientCategory, int>{};
                 for (final ingredient in checkedIngredients) {
@@ -198,6 +208,9 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                 }
 
                 final totalCount = checkedIngredients.length;
+                print('Totale ingredienti spuntati: $totalCount');
+                print('Distribuzione per reparto: $categoryCounts');
+
                 final categoryAmounts = <IngredientCategory, double>{};
 
                 for (final entry in categoryCounts.entries) {
@@ -205,12 +218,18 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   categoryAmounts[entry.key] = receiptAmount * percentage;
                 }
 
+                print('Importi per reparto calcolati: $categoryAmounts');
+
                 // Archivia gli elementi spuntati
                 await widget.state.archiveCheckedItems(now);
 
                 // Converti gli importi calcolati in spese
+                print(
+                    'Chiamata convertCategoryAmountsToExpenses con $categoryAmounts');
                 await widget.state
                     .convertCategoryAmountsToExpenses(categoryAmounts);
+                print(
+                    'Dopo convertCategoryAmountsToExpenses, spese totali: ${widget.state.data.expenseRecords.length}');
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
 import 'dart:ui' show PlatformDispatcher;
 
 import 'app_state.dart';
@@ -11,91 +9,13 @@ import 'screens/shopping_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/archive_screen.dart';
 
-// #region debug-point snack-manual-redscreen:reporter
-Future<void> _dbgReport({
-  required String hypothesisId,
-  required String msg,
-  Map<String, Object?>? data,
-}) async {
-  try {
-    var sessionId = 'snack-manual-redscreen';
-    final urls = <String>[];
-    try {
-      final env = File('.dbg/snack-manual-redscreen.env').readAsStringSync();
-      for (final line in env.split('\n')) {
-        if (line.startsWith('DEBUG_SERVER_URL=')) {
-          urls.add(line.substring('DEBUG_SERVER_URL='.length).trim());
-        } else if (line.startsWith('DEBUG_SESSION_ID=')) {
-          sessionId = line.substring('DEBUG_SESSION_ID='.length).trim();
-        }
-      }
-    } catch (_) {}
-    if (urls.isEmpty) {
-      urls.addAll([
-        'http://10.0.2.2:7777/event',
-        'http://127.0.0.1:7777/event',
-        'http://localhost:7777/event',
-      ]);
-    }
-
-    final normalized = <String>{};
-    for (final u in urls) {
-      final v = u.trim();
-      if (v.isEmpty) continue;
-      normalized.add(v);
-      if (v.contains('127.0.0.1')) {
-        normalized.add(v.replaceFirst('127.0.0.1', '10.0.2.2'));
-      }
-      if (v.contains('localhost')) {
-        normalized.add(v.replaceFirst('localhost', '10.0.2.2'));
-      }
-    }
-
-    for (final url in normalized) {
-      try {
-        final client = HttpClient();
-        final req = await client.postUrl(Uri.parse(url));
-        req.headers.contentType = ContentType.json;
-        req.write(
-          jsonEncode({
-            'sessionId': sessionId,
-            'runId': 'pre-fix',
-            'hypothesisId': hypothesisId,
-            'location': 'main.dart',
-            'msg': '[DEBUG] $msg',
-            'data': data ?? const {},
-            'ts': DateTime.now().millisecondsSinceEpoch,
-          }),
-        );
-        await req.close();
-        client.close(force: true);
-        break;
-      } catch (_) {}
-    }
-  } catch (_) {}
-}
-// #endregion
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   FlutterError.onError = (details) {
-    _dbgReport(
-      hypothesisId: 'E',
-      msg: 'FlutterError',
-      data: {
-        'exception': details.exceptionAsString(),
-        'stack': details.stack?.toString(),
-      },
-    );
     FlutterError.presentError(details);
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    _dbgReport(
-      hypothesisId: 'E',
-      msg: 'PlatformDispatcherError',
-      data: {'error': error.toString(), 'stack': stack.toString()},
-    );
     return false;
   };
   runApp(const PlanEatsApp());
@@ -278,7 +198,7 @@ class _HomeShellState extends State<HomeShell> {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.inventory_2_outlined),
-              title: const Text('Report'),
+              title: const Text('Report Spese'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(

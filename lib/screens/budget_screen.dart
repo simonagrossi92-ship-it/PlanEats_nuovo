@@ -18,7 +18,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Budget Mensili',
+          'Budget Spesa Mensile',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -32,6 +32,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
         children: [
           // Budget corrente in evidenza
           _CurrentBudgetCard(state: widget.state),
+          const SizedBox(height: 16),
+          // Statistiche aggiuntive
+          _StatisticsCards(state: widget.state),
           const SizedBox(height: 16),
           // Lista di tutti i budget
           Expanded(
@@ -248,7 +251,7 @@ class _CurrentBudgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final currentBudget = state.getMonthlyBudget(now.year, now.month);
-    final currentSpending = state.getExpensesForMonth(now.year, now.month);
+    final currentSpending = state.getFoodExpensesForMonth(now.year, now.month);
     final status = state.getBudgetStatus(now.year, now.month);
     final percentage = state.getBudgetPercentageUsed(now.year, now.month);
     final remaining = state.getBudgetRemaining(now.year, now.month);
@@ -541,6 +544,245 @@ class _CurrentBudgetCard extends StatelessWidget {
   }
 }
 
+class _StatisticsCards extends StatelessWidget {
+  const _StatisticsCards({required this.state});
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final averageReceipt = state.getAverageReceiptAmount(now.year, now.month);
+    final expenseCount = state.getFoodExpenseCount(now.year, now.month);
+    final mostPurchased = state.getMostPurchasedProducts(limit: 5);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          // Scontrino Medio
+          Expanded(
+            child: _AverageReceiptCard(
+              averageReceipt: averageReceipt,
+              expenseCount: expenseCount,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Prodotti più acquistati
+          Expanded(
+            child: _MostPurchasedCard(mostPurchased: mostPurchased),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AverageReceiptCard extends StatelessWidget {
+  const _AverageReceiptCard({
+    required this.averageReceipt,
+    required this.expenseCount,
+  });
+
+  final double averageReceipt;
+  final int expenseCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.receipt_long,
+                  color: const Color(0xFF8BA888),
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Scontrino Medio',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF8BA888),
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (expenseCount > 0) ...[
+              Text(
+                '€${averageReceipt.toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'In media a scontrino',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Basato su $expenseCount spese',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[500],
+                      fontSize: 11,
+                    ),
+              ),
+            ] else ...[
+              Text(
+                'Nessuna spesa',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'questo mese',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[500],
+                    ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MostPurchasedCard extends StatelessWidget {
+  const _MostPurchasedCard({required this.mostPurchased});
+
+  final List<MapEntry<String, int>> mostPurchased;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.shopping_basket,
+                  color: const Color(0xFF8BA888),
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Più Acquistati',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF8BA888),
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (mostPurchased.isNotEmpty) ...[
+              ...mostPurchased.take(3).toList().asMap().entries.map((entry) {
+                final index = entry.key;
+                final product = entry.value;
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index < 2 ? 8 : 0,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: _getRankColor(index),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}°',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _capitalizeFirst(product.key),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '${product.value}x',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ] else ...[
+              Text(
+                'Nessun dato',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Archivia prodotti per vedere statistiche',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[500],
+                      fontSize: 11,
+                    ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getRankColor(int index) {
+    switch (index) {
+      case 0:
+        return Colors.amber;
+      case 1:
+        return Colors.grey;
+      case 2:
+        return Colors.brown;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
+}
+
 class _BudgetsList extends StatelessWidget {
   const _BudgetsList({required this.state});
   final AppState state;
@@ -584,7 +826,7 @@ class _BudgetsList extends StatelessWidget {
       itemBuilder: (context, index) {
         final budget = budgets[index];
         final currentSpending =
-            state.getExpensesForMonth(budget.year, budget.month);
+            state.getFoodExpensesForMonth(budget.year, budget.month);
         final status = budget.getStatus(currentSpending);
         final percentage = budget.getPercentageUsed(currentSpending);
 

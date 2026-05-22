@@ -23,7 +23,6 @@ enum ExpenseCategory {
   salute,
   intrattenimento,
   abbigliamento,
-  altro,
 }
 
 String ingredientCategoryLabel(IngredientCategory c) {
@@ -71,8 +70,6 @@ String expenseCategoryLabel(ExpenseCategory c) {
       return 'Intrattenimento';
     case ExpenseCategory.abbigliamento:
       return 'Abbigliamento';
-    case ExpenseCategory.altro:
-      return 'Altro';
   }
 }
 
@@ -92,8 +89,6 @@ String expenseCategoryEmoji(ExpenseCategory c) {
       return '🎬';
     case ExpenseCategory.abbigliamento:
       return '👕';
-    case ExpenseCategory.altro:
-      return '📦';
   }
 }
 
@@ -124,7 +119,7 @@ ExpenseCategory mapIngredientToExpenseCategory(
     case IngredientCategory.igienePersonale:
       return ExpenseCategory.salute;
     case IngredientCategory.altro:
-      return ExpenseCategory.altro;
+      return ExpenseCategory.alimentari;
   }
 }
 
@@ -380,7 +375,7 @@ class ExpenseRecord {
     required this.amount,
     required this.dateTime,
     this.note,
-    this.category = ExpenseCategory.altro,
+    this.category = ExpenseCategory.alimentari,
   });
 
   final double amount;
@@ -403,9 +398,9 @@ class ExpenseRecord {
         category: json['category'] != null
             ? ExpenseCategory.values.firstWhere(
                 (e) => e.name == json['category'],
-                orElse: () => ExpenseCategory.altro,
+                orElse: () => ExpenseCategory.alimentari,
               )
-            : ExpenseCategory.altro,
+            : ExpenseCategory.alimentari,
       );
 
   String get formattedDate {

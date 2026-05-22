@@ -255,7 +255,10 @@ class _ArchiveReportScreenState extends State<ArchiveReportScreen> {
                 itemCount: _filteredItems.length,
                 itemBuilder: (context, index) {
                   final item = _filteredItems[index];
-                  return _ReportItemTile(item: item);
+                  return _ReportItemTile(
+                    item: item,
+                    onDelete: () => _deleteItem(item),
+                  );
                 },
               ),
             ),
@@ -474,11 +477,30 @@ class _ArchiveReportScreenState extends State<ArchiveReportScreen> {
       _updateFilteredItems();
     });
   }
+
+  void _deleteItem(ArchivedItem item) async {
+    await widget.state.deleteArchivedItem(item.id);
+    setState(() {
+      _updateFilteredItems();
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Prodotto rimosso dall\'archivio'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
 }
 
 class _ReportItemTile extends StatelessWidget {
-  const _ReportItemTile({required this.item});
+  const _ReportItemTile({
+    required this.item,
+    required this.onDelete,
+  });
   final ArchivedItem item;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -502,25 +524,36 @@ class _ReportItemTile extends StatelessWidget {
         subtitle: Text(
           '${item.formattedDate} • ${ingredientCategoryLabel(item.category)}',
         ),
-        trailing: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisAlignment: MainAxisAlignment.center,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '€ ${(item.estimatedPrice ?? 0.0).toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF8BA888),
-              ),
-            ),
-            if (item.quantity != null)
-              Text(
-                '${item.quantity!.toStringAsFixed(1).replaceAll('.0', '')} ${item.unit ?? ''}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '€ ${(item.estimatedPrice ?? 0.0).toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF8BA888),
+                  ),
                 ),
-              ),
+                if (item.quantity != null)
+                  Text(
+                    '${item.quantity!.toStringAsFixed(1).replaceAll('.0', '')} ${item.unit ?? ''}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: onDelete,
+              tooltip: 'Rimuovi',
+              color: Colors.red,
+            ),
           ],
         ),
       ),

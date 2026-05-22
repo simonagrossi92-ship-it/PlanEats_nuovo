@@ -54,7 +54,11 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
-    await _store.save(_data);
+    try {
+      await _store.save(_data);
+    } catch (e) {
+      // Silently fail on persistence errors
+    }
   }
 
   // --- Ricette ---
@@ -454,7 +458,6 @@ class AppState extends ChangeNotifier {
 
     // Crea ExpenseRecord per ogni categoria
     final now = DateTime.now();
-    print('Creando ${categoryTotals.length} spese da ingredienti archiviati');
     for (final entry in categoryTotals.entries) {
       if (entry.value > 0) {
         final expense = ExpenseRecord(
@@ -463,36 +466,30 @@ class AppState extends ChangeNotifier {
           note: 'Da lista spesa archiviata',
           category: entry.key,
         );
-        print('Aggiungendo spesa: ${entry.key} - €${entry.value}');
         await addExpense(expense);
       }
     }
-    print('Spese totali dopo conversione: ${_data.expenseRecords.length}');
   }
 
-  // --- Conversione importi per reparto in spese ---
+  // --- Conversione importo scontrino in spesa unica ---
   Future<void> convertCategoryAmountsToExpenses(
       Map<IngredientCategory, double> categoryAmounts) async {
     final now = DateTime.now();
-    print(
-        'Creando spese da importi scontrino per ${categoryAmounts.length} reparti');
 
-    for (final entry in categoryAmounts.entries) {
-      if (entry.value > 0) {
-        final expenseCategory = mapIngredientToExpenseCategory(entry.key);
-        final expense = ExpenseRecord(
-          amount: entry.value,
-          dateTime: now,
-          note: 'Da scontrino - ${ingredientCategoryLabel(entry.key)}',
-          category: expenseCategory,
-        );
-        print(
-            'Aggiungendo spesa: ${expenseCategory} - €${entry.value} (da ${entry.key})');
-        await addExpense(expense);
-      }
+    // Calcola l'importo totale dello scontrino
+    final totalAmount =
+        categoryAmounts.values.fold(0.0, (sum, amount) => sum + amount);
+
+    if (totalAmount > 0) {
+      // Crea una singola spesa con l'importo totale dello scontrino
+      final expense = ExpenseRecord(
+        amount: totalAmount,
+        dateTime: now,
+        note: 'Da scontrino spesa',
+        category: ExpenseCategory.alimentari,
+      );
+      await addExpense(expense);
     }
-    print(
-        'Spese totali dopo conversione scontrino: ${_data.expenseRecords.length}');
   }
 
   MonthlyBudget? getMonthlyBudget(int year, int month) {
@@ -524,11 +521,20 @@ class AppState extends ChangeNotifier {
         .fold(0.0, (sum, expense) => sum + expense.amount);
   }
 
+  double getFoodExpensesForMonth(int year, int month) {
+    return _data.expenseRecords
+        .where((expense) =>
+            expense.dateTime.year == year &&
+            expense.dateTime.month == month &&
+            expense.category == ExpenseCategory.alimentari)
+        .fold(0.0, (sum, expense) => sum + expense.amount);
+  }
+
   BudgetStatus getBudgetStatus(int year, int month) {
     final budget = getMonthlyBudget(year, month);
     if (budget == null) return BudgetStatus.verde;
 
-    final currentSpending = getExpensesForMonth(year, month);
+    final currentSpending = getFoodExpensesForMonth(year, month);
     return budget.getStatus(currentSpending);
   }
 
@@ -536,7 +542,7 @@ class AppState extends ChangeNotifier {
     final budget = getMonthlyBudget(year, month);
     if (budget == null) return 0.0;
 
-    final currentSpending = getExpensesForMonth(year, month);
+    final currentSpending = getFoodExpensesForMonth(year, month);
     return budget.getPercentageUsed(currentSpending);
   }
 
@@ -544,8 +550,46 @@ class AppState extends ChangeNotifier {
     final budget = getMonthlyBudget(year, month);
     if (budget == null) return 0.0;
 
-    final currentSpending = getExpensesForMonth(year, month);
+    final currentSpending = getFoodExpensesForMonth(year, month);
     return budget.getRemainingAmount(currentSpending);
+  }
+
+  // --- Scontrino Medio ---
+  double getAverageReceiptAmount(int year, int month) {
+    final foodExpenses = _data.expenseRecords
+        .where((expense) =>
+            expense.dateTime.year == year &&
+            expense.dateTime.month == month &&
+            expense.category == ExpenseCategory.alimentari)
+        .toList();
+
+    if (foodExpenses.isEmpty) return 0.0;
+    return foodExpenses.fold(0.0, (sum, expense) => sum + expense.amount) /
+        foodExpenses.length;
+  }
+
+  int getFoodExpenseCount(int year, int month) {
+    return _data.expenseRecords
+        .where((expense) =>
+            expense.dateTime.year == year &&
+            expense.dateTime.month == month &&
+            expense.category == ExpenseCategory.alimentari)
+        .length;
+  }
+
+  // --- Prodotti più acquistati ---
+  List<MapEntry<String, int>> getMostPurchasedProducts({int limit = 10}) {
+    final productCounts = <String, int>{};
+
+    for (final item in _data.archivedItems) {
+      final name = item.name.toLowerCase().trim();
+      productCounts[name] = (productCounts[name] ?? 0) + 1;
+    }
+
+    final sortedEntries = productCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return sortedEntries.take(limit).toList();
   }
 
   // --- Archivio prodotti ---
@@ -617,6 +661,26 @@ class AppState extends ChangeNotifier {
     final sorted = List<ArchivedItem>.from(_data.archivedItems);
     sorted.sort((a, b) => b.archivedDate.compareTo(a.archivedDate));
     return sorted;
+  }
+
+  List<ArchivedItem> getArchivedItemsByDateRange(
+      DateTime startDate, DateTime endDate) {
+    return _data.archivedItems.where((item) {
+      return item.archivedDate
+              .isAfter(startDate.subtract(const Duration(days: 1))) &&
+          item.archivedDate.isBefore(endDate.add(const Duration(days: 1)));
+    }).toList();
+  }
+
+  Map<IngredientCategory, double> getCategoryTotalsFromArchived(
+      List<ArchivedItem> items) {
+    final categoryTotals = <IngredientCategory, double>{};
+    for (final item in items) {
+      final price = item.estimatedPrice ?? 0.0;
+      categoryTotals[item.category] =
+          (categoryTotals[item.category] ?? 0.0) + price;
+    }
+    return categoryTotals;
   }
 
   Future<void> deleteArchivedItem(String id) async {

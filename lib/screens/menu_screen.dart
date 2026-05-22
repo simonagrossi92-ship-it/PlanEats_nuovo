@@ -1,77 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
 
 import '../app_state.dart';
 import '../models.dart';
 import '../utils/dates.dart';
 import 'recipe_editor.dart';
 import 'recipes_screen.dart';
-
-// #region debug-point snack-manual-redscreen:reporter
-Future<void> _dbgReportSnack({
-  required String hypothesisId,
-  required String msg,
-  Map<String, Object?>? data,
-}) async {
-  try {
-    var sessionId = 'snack-manual-redscreen';
-    final urls = <String>[];
-    try {
-      final env = File('.dbg/snack-manual-redscreen.env').readAsStringSync();
-      for (final line in env.split('\n')) {
-        if (line.startsWith('DEBUG_SERVER_URL=')) {
-          urls.add(line.substring('DEBUG_SERVER_URL='.length).trim());
-        } else if (line.startsWith('DEBUG_SESSION_ID=')) {
-          sessionId = line.substring('DEBUG_SESSION_ID='.length).trim();
-        }
-      }
-    } catch (_) {}
-    if (urls.isEmpty) {
-      urls.addAll([
-        'http://10.0.2.2:7777/event',
-        'http://127.0.0.1:7777/event',
-        'http://localhost:7777/event',
-      ]);
-    }
-
-    final normalized = <String>{};
-    for (final u in urls) {
-      final v = u.trim();
-      if (v.isEmpty) continue;
-      normalized.add(v);
-      if (v.contains('127.0.0.1')) {
-        normalized.add(v.replaceFirst('127.0.0.1', '10.0.2.2'));
-      }
-      if (v.contains('localhost')) {
-        normalized.add(v.replaceFirst('localhost', '10.0.2.2'));
-      }
-    }
-
-    for (final url in normalized) {
-      try {
-        final client = HttpClient();
-        final req = await client.postUrl(Uri.parse(url));
-        req.headers.contentType = ContentType.json;
-        req.write(
-          jsonEncode({
-            'sessionId': sessionId,
-            'runId': 'pre-fix',
-            'hypothesisId': hypothesisId,
-            'location': 'menu_screen.dart',
-            'msg': '[DEBUG] $msg',
-            'data': data ?? const {},
-            'ts': DateTime.now().millisecondsSinceEpoch,
-          }),
-        );
-        await req.close();
-        client.close(force: true);
-        break;
-      } catch (_) {}
-    }
-  } catch (_) {}
-}
-// #endregion
 
 Color getMealColor(BuildContext context, MealType type) {
   switch (type) {
@@ -345,22 +278,6 @@ class _MenuScreenState extends State<MenuScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight:
-            90, // Aumentata altezza per contenere il titolo a due righe
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: 4), // Aggiunto spazio
-            Text(
-              'Menù settimanale',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -582,11 +499,6 @@ Future<void> _openMealPicker(
   required DateTime day,
   required MealType type,
 }) async {
-  await _dbgReportSnack(
-    hypothesisId: 'A',
-    msg: '_openMealPicker start',
-    data: {'type': type.name, 'day': day.toIso8601String()},
-  );
   final action = await showModalBottomSheet<_MealPickAction>(
     context: context,
     showDragHandle: true,
@@ -626,11 +538,6 @@ Future<void> _openMealPicker(
   try {
     String? recipeId;
     String? customTitle;
-    await _dbgReportSnack(
-      hypothesisId: 'A',
-      msg: '_openMealPicker action selected',
-      data: {'type': type.name, 'action': action.name},
-    );
 
     switch (action) {
       case _MealPickAction.ricettario:
@@ -664,16 +571,6 @@ Future<void> _openMealPicker(
         customTitle = await _askSnackText(context);
         break;
     }
-
-    await _dbgReportSnack(
-      hypothesisId: 'B',
-      msg: '_openMealPicker selection result',
-      data: {
-        'type': type.name,
-        'recipeId': recipeId,
-        'customTitle': customTitle,
-      },
-    );
 
     if ((recipeId == null || recipeId.isEmpty) &&
         (customTitle == null || customTitle.trim().isEmpty)) {
@@ -726,19 +623,6 @@ Future<void> _openMealPicker(
         ? [...currentEntry!.items, newItem]
         : [newItem];
 
-    await _dbgReportSnack(
-      hypothesisId: 'B',
-      msg: 'setMealEntry',
-      data: {
-        'type': type.name,
-        'mode': mode.name,
-        'itemsCount': items.length,
-        'newItemIsRecipe': recipeId != null,
-        'newItemTitle': customTitle,
-        'servings': servings,
-      },
-    );
-
     await state.setMealEntry(
       day,
       type,
@@ -756,11 +640,6 @@ Future<void> _openMealPicker(
       );
     }
   } catch (e) {
-    await _dbgReportSnack(
-      hypothesisId: 'D',
-      msg: '_openMealPicker catch',
-      data: {'type': type.name, 'error': e.toString()},
-    );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
